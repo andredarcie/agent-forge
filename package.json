@@ -1,0 +1,22 @@
+{
+  "name": "agentforge",
+  "version": "0.1.0",
+  "description": "AgentForge — An AI-native 3D modeling environment built on Three.js",
+  "type": "module",
+  "bin": {
+    "agentforge": "bin/agentforge.mjs"
+  },
+  "scripts": {
+    "dev": "node bin/agentforge.mjs dev",
+    "forge": "node bin/agentforge.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.3.0",
+    "three": "^0.185.1",
+    "three-bvh-csg": "^0.0.18",
+    "three-mesh-bvh": "^0.9.10"
+  }
+}
