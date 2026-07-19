@@ -84,7 +84,7 @@ front of the bulb. Before declaring any model done:
    The analyzer samples each surface and counts points within tolerance
    (~1% of model size) of the other surface. Burying a big box deep inside
    another only produces a thin crossing ring (reads as GRAZING). To make a
-   stacked joint strong, overlap the sections a FEW MILLIMETRES so the two
+   stacked joint strong, overlap the sections a FEW MILLIMETERS so the two
    large faces sit near-coplanar — e.g. a cabinet section whose bottom face
    is 8mm below the top face of the section beneath it (see models/psx-arcade.js).
    Concretely: **aim for ~8mm face separation on a ~1.5m model** — 12-15mm sits
@@ -157,7 +157,7 @@ Rules that keep quality high (violations are flagged in the report's `issues`):
 - **Model must rest on y=0** — `H.centerGround(root)` as the return guarantees it.
 - **Name every mesh, group AND material in English PascalCase.** Names become
   glTF node/mesh/material names on export and `--focus` targets, so they must
-  be portable — no Portuguese, no `""`, no two different materials sharing a
+  be portable — English only, no `""`, no two different materials sharing a
   name (name shared `mats.*` instances via `{ name: 'WoodFront' }`). Export
   auto-uniquifies collisions and copies names onto glTF meshes as a safety
   net, but get it right in the model.
@@ -261,9 +261,9 @@ cleanup. `build()` well and the export handles the rest:
 - **Metadata via `userData` → glTF `extras`** — anything you put in
   `obj.userData` is exported and surfaces in `GLTFLoader` as `node.userData`.
   Use it to encode intent the geometry can't:
-  - root: `userData.units='meters'` (glTF is metres by spec — 1 unit = 1 m),
+  - root: `userData.units='meters'` (glTF is meters by spec — 1 unit = 1 m),
     `up='+y'`, `front='+z'`.
-  - articulated parts: `userData.kind`, `openAxis`, `travel` (metres of motion),
+  - articulated parts: `userData.kind`, `openAxis`, `travel` (meters of motion),
     `closedZ`, so the engine animates without reverse-engineering the rig.
   - `H.marker(...)` for item slots / hardpoints / snap points — an empty node
     the engine positions objects against.

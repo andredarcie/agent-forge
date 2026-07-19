@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// "Tiny Theft Man" — the male lead from the referencia.png voxel key art
+// "Tiny Theft Man" — the male lead from the reference.png voxel key art
 // (top-middle panel). Tan skin, short dark-brown hair, heavy brows, serious
 // sideways glance, white ribbed tank top, chunky gold chain in a V, left
 // fist raised beside the head gripping a dark pistol, muzzle up.

@@ -9,6 +9,27 @@ and keeps iterating — the same loop a 3D artist uses: model → look → refin
 
 <p align="center"><em>model as code → headless render → sheet.png + report.json → iterate</em></p>
 
+## Example models
+
+Every image below is a straight `render` of the corresponding file in
+`models/` — no manual retouching, no external assets. The PS1 look (320×240
+framebuffer, RGB555 dither, vertex snapping, affine textures) is produced by
+the renderer itself. The first three respect a PS1 triangle budget;
+`swiss-cheese` and `example-lamp` predate the PSX pipeline and are over budget
+by design, kept as CSG and articulation references.
+
+| | |
+|:--:|:--:|
+| <img src="docs/images/psx-arcade.png" width="380" alt="Arcade cabinet"> | <img src="docs/images/dresser.png" width="380" alt="Wooden dresser"> |
+| **[psx-arcade](models/psx-arcade.js)** — 680 tris<br>pixel-art screen + marquee, vertex-paint AO | **[dresser](models/dresser.js)** — 587 tris<br>3 sliding drawers, CSG trays, export-ready rig |
+| <img src="docs/images/tiny-theft-man.png" width="380" alt="Voxel character"> | <img src="docs/images/swiss-cheese.png" width="380" alt="Swiss cheese wedge"> |
+| **[tiny-theft-man](models/tiny-theft-man.js)** — 732 tris<br>voxel character, rendered clean (PSX post off) | **[swiss-cheese](models/swiss-cheese.js)** — CSG demo<br>eyes boolean-subtracted from the wedge |
+
+<p align="center">
+  <img src="docs/images/example-lamp.png" width="380" alt="Articulated desk lamp"><br>
+  <em><strong><a href="models/example-lamp.js">example-lamp</a></strong> — articulated desk lamp, the scaffold you get from <code>new</code></em>
+</p>
+
 ## Why this works well for AI
 
 1. **Fast visualization** — `render` produces a contact sheet with 8 views in ~5 s
@@ -109,7 +130,8 @@ bin/agentforge.mjs     CLI
 src/                   server, headless capture (puppeteer-core), template
 web/                   live viewer + capture page + shared libs
 web/common/            stage (lights/cameras), materials, helpers, analyze, loader
-models/                your models (example-lamp.js included)
-renders/               output: sheet.png, views/*.png, report.json
-exports/               GLB output
+models/                your models (the examples above included)
+docs/images/           README screenshots
+renders/               output: sheet.png, views/*.png, report.json (gitignored)
+exports/               GLB output (gitignored)
 ```

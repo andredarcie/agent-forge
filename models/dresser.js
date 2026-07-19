@@ -39,14 +39,14 @@ export function build({ THREE, mats, helpers: H, tex }) {
   const woodDark = mats.darkWood({ name: 'WoodDark' });
   const woodRaw = mats.wood(0xd8c49a, { name: 'WoodRaw' }); // drawer interiors, raw wood
 
-  // --- Legs (0..0.10; the base panel bites 8mm into them) -------------------
+  // --- Legs (0..0.10; the base panel overlaps them by 8mm) ------------------
   for (const [sx, sz, nm] of [[-1, 1, 'LegFrontLeft'], [1, 1, 'LegFrontRight'], [-1, -1, 'LegBackLeft'], [1, -1, 'LegBackRight']]) {
     root.add(H.mesh(nm, H.box(0.06, 0.10, 0.06), woodDark, { pos: [sx * 0.35, 0.05, sz * 0.19] }));
   }
 
   // --- Carcass ----------------------------------------------------------------
   // PSX joint rule: large parallel faces ~8mm apart = strong structural
-  // contact. Each panel bites 8mm into its neighbour.
+  // contact. Each panel overlaps its neighbor by 8mm.
   root.add(H.mesh('Base', H.box(0.80, 0.04, 0.48), woodCarcass, { pos: [0, 0.112, 0] }));            // 0.092..0.132
   root.add(H.mesh('SideLeft', H.box(0.04, 0.76, 0.48), woodCarcass, { pos: [-0.38, 0.504, 0] }));    // 0.124..0.884
   root.add(H.mesh('SideRight', H.box(0.04, 0.76, 0.48), woodCarcass, { pos: [0.38, 0.504, 0] }));
@@ -105,7 +105,7 @@ export function build({ THREE, mats, helpers: H, tex }) {
   // the drawer.
   function makeDrawer(name, suffix, ob, open) {
     const g = H.group(name);
-    const yc = ob + 0.114; // vertical centre of the opening
+    const yc = ob + 0.114; // vertical center of the opening
 
     // Overlay front: sits flat against the carcass front plane (z=0.24)
     g.add(H.mesh(`Front${suffix}`, H.box(0.76, 0.222, 0.025), woodFront, { pos: [0, yc, 0.2525] }));
@@ -126,7 +126,7 @@ export function build({ THREE, mats, helpers: H, tex }) {
     tray.userData.interior = true; // inside the carcass when closed
     g.add(tray);
 
-    // Empty node marking the item slot (cavity floor, centred). The engine
+    // Empty node marking the item slot (cavity floor, centered). The engine
     // reads the position to seat an object without guessing by bounding box.
     g.add(H.marker(`ItemSlot${suffix}`, { pos: [0, ob + 0.02, 0.045], data: { slot: 'item' } }));
 

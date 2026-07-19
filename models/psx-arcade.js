@@ -17,7 +17,7 @@ export function build({ THREE, mats, helpers: H, tex }) {
   const bodyBlue = 0x2b3a8c;
 
   // --- Cabinet stack ---------------------------------------------------------
-  // Joint rule for big stacked boxes: overlap the sections a few millimetres
+  // Joint rule for big stacked boxes: overlap the sections a few millimeters
   // so the large horizontal faces sit CLOSE AND PARALLEL (within the contact
   // tolerance). That is what registers as a strong structural interface —
   // burying a box deep inside another only creates a thin crossing ring.
