@@ -8,6 +8,17 @@ export const meta = {
   name: 'swiss-cheese',
   description: 'Wedge of Swiss cheese (Emmental) with eyes carved by CSG',
   units: 'meters',
+  psx: {
+    // Rendered clean/HD: no PSX post. The booleans leave T-junctions along
+    // every cut seam — a vertex of one triangle landing mid-edge of another —
+    // so the shared edge does not rasterize identically for both and opens
+    // one-pixel pinholes. The 320x240 target has no MSAA, so those pinholes
+    // land on whole pixels and read as black speckles scattered over the
+    // wedge; the antialiased studio render covers them. Lowering the
+    // tessellation does not help (tested at 1,965 tris — same cracks), since
+    // T-junctions are a property of the boolean output, not of its density.
+    enabled: false,
+  },
 };
 
 export function build({ THREE, mats, helpers: H }) {
