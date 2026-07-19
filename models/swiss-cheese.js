@@ -1,12 +1,12 @@
-// Model: queijo-suico — a wedge of Swiss Emmental cheese.
+// Model: swiss-cheese — a wedge of Swiss Emmental cheese.
 // Demonstrates CSG: the characteristic round "eyes" are spheres boolean-
 // subtracted from a beveled extruded wedge, art-directed so craters open on
 // the cut faces, the top and the rind.
 import * as THREE from 'three';
 
 export const meta = {
-  name: 'queijo-suico',
-  description: 'Cunha de queijo suíço (Emmental) com olhos esculpidos por CSG',
+  name: 'swiss-cheese',
+  description: 'Wedge of Swiss cheese (Emmental) with eyes carved by CSG',
   units: 'meters',
 };
 
@@ -16,7 +16,7 @@ export function build({ THREE, mats, helpers: H }) {
   const HGT = 0.082;                    // wedge height
 
   const cheeseMat = mats.custom({
-    name: 'emmental',
+    name: 'Emmental',
     color: 0xf3c76e,
     roughness: 0.58,
     metalness: 0,
@@ -49,7 +49,7 @@ export function build({ THREE, mats, helpers: H }) {
     rot: [0, deg(-(180 - 52)), 0],
   });
   const wedge = H.intersect(disc, keepA, keepB);
-  wedge.name = 'Cunha';
+  wedge.name = 'Wedge';
 
   // --- Eyes: spheres subtracted from the wedge -----------------------------
   // Cut face A lies on the z=0 plane; cut face B on the radial plane at THETA
@@ -81,8 +81,8 @@ export function build({ THREE, mats, helpers: H }) {
   );
 
   const cheese = H.subtract(wedge, ...cutters);
-  cheese.name = 'Cunha';
+  cheese.name = 'Wedge';
 
-  const root = H.group('QueijoSuico', cheese);
+  const root = H.group('SwissCheese', cheese);
   return H.centerGround(root);
 }

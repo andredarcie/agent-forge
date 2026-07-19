@@ -165,7 +165,7 @@ Rules that keep quality high (violations are flagged in the report's `issues`):
   arms folded — offset 0. Expose the motion through a constant (e.g.
   `OPEN.middle = 0.25`) and a metadata hint, not by shipping the asset
   mid-motion. An integrator expects to receive the rest pose and animate from
-  there. See models/armario-gavetas.js.
+  there. See models/dresser.js.
 - **Build hierarchically with pivot groups.** For articulated parts, position
   the group at the joint, add the geometry offset inside it, rotate the group.
 - **Stay inside the budget** — check `H.triCount(root)` mid-build if unsure.
@@ -239,7 +239,7 @@ variation, grime and wear are baked in by default. PS1 textures were ≤128px;
      centers >= 1mm off face planes.
   3. ExtrudeGeometry/ShapeGeometry caps are hostile CSG topology: cuts through
      them silently fail or invert. For solids that will be cut, build the base
-     from CSG-clean primitives (see models/queijo-suico.js).
+     from CSG-clean primitives (see models/swiss-cheese.js).
 - `worldPos(obj, local?)` → `[x,y,z]` world coords of a local point
 - `dist(a, b, aLocal?, bLocal?)` — world distance between two objects' points
 - `centerGround(root)` — recenter on origin + drop onto y=0
@@ -311,7 +311,7 @@ Others: not grounded, wrong scale for meters, unnamed meshes, degenerate geometr
 - `models/psx-arcade.js` — the showcase: box modeling, chamfers, tex.pixel
   screen + marquee, unlit/emissive done right, vertex-paint AO, near-coplanar
   stacked joints, 680/800 tris.
-- `models/armario-gavetas.js` — articulated furniture done export-ready:
+- `models/dresser.js` — articulated furniture done export-ready:
   drawers as sliding pivot groups in a closed rest pose (an `OPEN` constant
   slides them), English node/material names, glTF `extras` metadata
   (`openAxis`/`travel` per drawer, `ItemSlot*` marker nodes, root units/axes),
@@ -319,8 +319,8 @@ Others: not grounded, wrong scale for meters, unnamed meshes, degenerate geometr
   tenuous), square-section corner battens bridging perpendicular panels,
   runner frames with side guides (union) so drawers mount through what they
   slide on, horizontal-grain wood fronts.
-- `models/example-lamp.js`, `models/queijo-suico.js` — legacy pre-PSX models
-  (over budget by design); queijo-suico documents the CSG-clean-base technique.
+- `models/example-lamp.js`, `models/swiss-cheese.js` — legacy pre-PSX models
+  (over budget by design); swiss-cheese documents the CSG-clean-base technique.
 
 ## Architecture (for maintaining the tool itself)
 
