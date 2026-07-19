@@ -1,12 +1,10 @@
 // Live viewer: orbit camera, hot reload via SSE, data panel, screenshots.
-// Renders through the PSX pipeline (toggle with the PSX button / X key).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { setupRenderer, createStage } from '/web/common/stage.js';
 import { loadModel } from '/web/common/model-loader.js';
 import { analyze } from '/web/common/analyze.js';
 import { analyzeContacts } from '/web/common/contacts.js';
-import { PSXPost, createPSXUniforms, patchModelPSX, setPSXArtifacts } from '/web/common/psx.js';
 
 const host = document.getElementById('canvas-host');
 const statusEl = document.getElementById('status');
@@ -15,30 +13,17 @@ const modelSelect = document.getElementById('model-select');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(1); // PSX pipeline handles the upscale
-setupRenderer(renderer, { psx: true });
+renderer.setPixelRatio(1);
+setupRenderer(renderer);
 host.appendChild(renderer.domElement);
 
-const stage = createStage(renderer, { psx: true });
+const stage = createStage(renderer);
 const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.001, 500);
 camera.position.set(0.6, 0.45, 0.6);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
-
-// PSX pipeline: 240-line internal framebuffer at the window's aspect ratio.
-let psxFx = true;
-const psxUniforms = createPSXUniforms({ width: 320, height: 240 });
-let post = null;
-function rebuildPost() {
-  if (post) post.dispose();
-  const h = 240;
-  const w = Math.round((h * innerWidth) / innerHeight / 2) * 2;
-  post = new PSXPost(renderer, { width: w, height: h });
-  psxUniforms.uPsxSnapRes.value.set(w / 2, h / 2);
-}
-rebuildPost();
 
 let currentRoot = null;
 let currentModel = null;
@@ -53,9 +38,9 @@ function fmt(n) { return Number(n).toFixed(3); }
 
 function updatePanel(report) {
   const s = report.stats, b = report.bounds;
-  const psx = report.psx;
-  const budgetHtml = psx
-    ? `<div class="kv"><b>PSX budget</b><span style="color:${psx.withinBudget ? 'var(--ok)' : 'var(--err)'}">${s.triangles.toLocaleString()} / ${psx.budget.toLocaleString()} (${psx.pctOfBudget}%)</span></div>`
+  const budget = report.budget;
+  const budgetHtml = budget
+    ? `<div class="kv"><b>Tri budget</b><span style="color:${budget.withinBudget ? 'var(--ok)' : 'var(--err)'}">${s.triangles.toLocaleString()} / ${budget.budget.toLocaleString()} (${budget.pctOfBudget}%)</span></div>`
     : '';
   document.getElementById('sec-stats').innerHTML = `
     <div class="kv"><b>Size (W×H×D)</b><span>${fmt(b.size[0])} × ${fmt(b.size[1])} × ${fmt(b.size[2])} m</span></div>
@@ -115,7 +100,6 @@ async function load(name, { keepCamera = false } = {}) {
   }
   currentRoot = root;
   stage.scene.add(root);
-  patchModelPSX(root, psxUniforms);
 
   const report = analyze(root, { meta, modelName: name });
   try {
@@ -171,25 +155,17 @@ document.getElementById('btn-grid').onclick = (e) => {
   e.currentTarget.classList.toggle('active', on);
 };
 document.getElementById('btn-shot').onclick = takeScreenshot;
-const btnPsx = document.getElementById('btn-psx');
-btnPsx.onclick = () => {
-  psxFx = !psxFx;
-  setPSXArtifacts(psxUniforms, psxFx);
-  btnPsx.classList.toggle('active', psxFx);
-};
 modelSelect.onchange = () => load(modelSelect.value);
 
 addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
   if (e.key === 'w' || e.key === 'W') document.getElementById('btn-wire').click();
   if (e.key === 'g' || e.key === 'G') document.getElementById('btn-grid').click();
-  if (e.key === 'x' || e.key === 'X') btnPsx.click();
   if (e.key === 'p' || e.key === 'P') takeScreenshot();
 });
 
 function renderFrame() {
-  if (psxFx && !wireframe) post.render(stage.scene, camera);
-  else renderer.render(stage.scene, camera);
+  renderer.render(stage.scene, camera);
 }
 
 async function takeScreenshot() {
@@ -208,7 +184,6 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  rebuildPost();
 });
 
 // ---- Hot reload via SSE -----------------------------------------------------

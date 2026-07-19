@@ -1,24 +1,15 @@
 // Model: swiss-cheese — a wedge of Swiss Emmental cheese.
-// Demonstrates CSG: the characteristic round "eyes" are spheres boolean-
-// subtracted from a beveled extruded wedge, art-directed so craters open on
-// the cut faces, the top and the rind.
+// Demonstrates CSG: the characteristic round "eyes" are low-poly spheres
+// boolean-subtracted from a wedge built as cylinder n box n box, art-directed
+// so craters open on the cut faces, the top and the rind. Segment counts are
+// kept low on purpose — the booleans stay robust and the facets read.
 import * as THREE from 'three';
 
 export const meta = {
   name: 'swiss-cheese',
   description: 'Wedge of Swiss cheese (Emmental) with eyes carved by CSG',
   units: 'meters',
-  psx: {
-    // Rendered clean/HD: no PSX post. The booleans leave T-junctions along
-    // every cut seam — a vertex of one triangle landing mid-edge of another —
-    // so the shared edge does not rasterize identically for both and opens
-    // one-pixel pinholes. The 320x240 target has no MSAA, so those pinholes
-    // land on whole pixels and read as black speckles scattered over the
-    // wedge; the antialiased studio render covers them. Lowering the
-    // tessellation does not help (tested at 1,965 tris — same cracks), since
-    // T-junctions are a property of the boolean output, not of its density.
-    enabled: false,
-  },
+  budget: 2000,
 };
 
 export function build({ THREE, mats, helpers: H }) {
@@ -46,7 +37,7 @@ export function build({ THREE, mats, helpers: H }) {
   // those surfaces survive, never the cylinder's triangle-fan caps.
   const deg = THREE.MathUtils.degToRad;
   // Oversized cylinder: its fan caps lie outside the boxes' y-range [0, HGT].
-  const disc = H.mesh('Disc', new THREE.CylinderGeometry(R, R, 0.2, 96), cheeseMat, {
+  const disc = H.mesh('Disc', new THREE.CylinderGeometry(R, R, 0.2, 20), cheeseMat, {
     pos: [0, HGT / 2, 0],
   });
   // keepA: half-space z < 0 (cut face A on the z=0 plane)
@@ -88,7 +79,7 @@ export function build({ THREE, mats, helpers: H }) {
     { p: [0.110, 0.082,  0.001], r: 0.012 },
   ];
   const cutters = eyes.map(({ p, r }, i) =>
-    H.mesh(`Eye_${i}`, new THREE.SphereGeometry(r, 28, 20), cheeseMat, { pos: p })
+    H.mesh(`Eye_${i}`, new THREE.SphereGeometry(r, 10, 7), cheeseMat, { pos: p })
   );
 
   const cheese = H.subtract(wedge, ...cutters);

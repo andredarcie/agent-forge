@@ -1,6 +1,6 @@
 // Geometry and scene-building helpers available to model files via ctx.helpers.
 // All dimensions are in meters, Y is up. Segment defaults are tuned for the
-// PS1 low-poly aesthetic — chunky silhouettes over smooth curves. Raise them
+// low-poly aesthetic — chunky silhouettes over smooth curves. Raise them
 // only when a curve genuinely reads badly, and check the triangle budget.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -67,14 +67,14 @@ export function place(obj, pos = [0, 0, 0], { rot, scale } = {}) {
   return obj;
 }
 
-/** Plain box — the fundamental PSX primitive. 12 triangles, centered. */
+/** Plain box — the fundamental low-poly primitive. 12 triangles, centered. */
 export function box(w, h, d) {
   return new THREE.BoxGeometry(w, h, d);
 }
 
 /**
  * Box with CHAMFERED edges (segments=1 gives flat 45° bevels, the classic
- * N64/PS1 "softened box"). More segments = rounder = more triangles.
+ * "softened box"). More segments = rounder = more triangles.
  */
 export function roundedBox(w, h, d, radius = Math.min(w, h, d) * 0.06, segments = 1) {
   return new RoundedBoxGeometry(w, h, d, segments, radius);
@@ -97,7 +97,7 @@ export function tube(points, radius = 0.01, { radialSegments = 8, tubularSegment
   return new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, closed);
 }
 
-/** Low-poly UV sphere, centered. 10x7 segments reads as "PS1 sphere". */
+/** Low-poly UV sphere, centered. 10x7 segments keeps the facets readable. */
 export function sphere(radius, widthSegments = 10, heightSegments = 7) {
   return new THREE.SphereGeometry(radius, widthSegments, heightSegments);
 }
@@ -110,7 +110,7 @@ export function icosphere(radius, detail = 1) {
   return new THREE.IcosahedronGeometry(radius, detail);
 }
 
-/** Cone standing on Y axis, base at y=0. 8 sides is the PSX default. */
+/** Cone standing on Y axis, base at y=0. 8 sides reads as low-poly. */
 export function cone(radius, height, radialSegments = 8) {
   const g = new THREE.ConeGeometry(radius, height, radialSegments);
   g.translate(0, height / 2, 0);
@@ -228,7 +228,7 @@ export function capsule(radius, height, { radialSegments = 10, capSegments = 4 }
   return g;
 }
 
-/** Cylinder standing on Y axis, base at y=0. 12 sides is the PSX default. */
+/** Cylinder standing on Y axis, base at y=0. 12 sides reads as low-poly. */
 export function cylinder(radiusTop, radiusBottom, height, radialSegments = 12) {
   const g = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments);
   g.translate(0, height / 2, 0);
@@ -236,7 +236,7 @@ export function cylinder(radiusTop, radiusBottom, height, radialSegments = 12) {
 }
 
 // ---------------------------------------------------------------------------
-// Low-poly / PSX-specific tools
+// Low-poly shaping tools
 // ---------------------------------------------------------------------------
 
 /**
@@ -273,7 +273,7 @@ export function quantizeVerts(geometry, step = 0.005) {
 }
 
 /**
- * Paint per-vertex colors — the PS1's cheapest "texture": gradients, fake AO,
+ * Paint per-vertex colors — the cheapest "texture": gradients, fake AO,
  * dirt. fn receives the vertex position in LOCAL space ([x,y,z]) and returns
  * a color (hex number, CSS string, or THREE.Color).
  *
@@ -299,7 +299,7 @@ export function vertexPaint(target, fn) {
   return target;
 }
 
-/** Total triangle count under an object — check your PSX budget in build(). */
+/** Total triangle count under an object — check your budget mid-build(). */
 export function triCount(obj) {
   let tris = 0;
   obj.traverse((o) => {

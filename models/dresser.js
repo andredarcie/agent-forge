@@ -1,4 +1,4 @@
-// Model: dresser — PSX wooden dresser with 3 sliding drawers.
+// Model: dresser — low-poly wooden dresser with 3 sliding drawers.
 //
 // Integration conventions (so the .glb ships ready to use):
 //  - Node and material names in English PascalCase (they become glTF node
@@ -23,7 +23,7 @@ export const meta = {
   name: 'dresser',
   description: 'Wooden dresser with 3 drawers that open and close (groups sliding on the +Z axis)',
   units: 'meters',
-  psx: { budget: 600 },
+  budget: 600,
 };
 
 export function build({ THREE, mats, helpers: H, tex }) {
@@ -45,7 +45,7 @@ export function build({ THREE, mats, helpers: H, tex }) {
   }
 
   // --- Carcass ----------------------------------------------------------------
-  // PSX joint rule: large parallel faces ~8mm apart = strong structural
+  // Joint rule: large parallel faces ~8mm apart = strong structural
   // contact. Each panel overlaps its neighbor by 8mm.
   root.add(H.mesh('Base', H.box(0.80, 0.04, 0.48), woodCarcass, { pos: [0, 0.112, 0] }));            // 0.092..0.132
   root.add(H.mesh('SideLeft', H.box(0.04, 0.76, 0.48), woodCarcass, { pos: [-0.38, 0.504, 0] }));    // 0.124..0.884

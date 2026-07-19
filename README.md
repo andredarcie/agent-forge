@@ -12,22 +12,20 @@ and keeps iterating — the same loop a 3D artist uses: model → look → refin
 ## Example models
 
 Every image below is a straight `render` of the corresponding file in
-`models/` — no manual retouching, no external assets. The PS1 look (320×240
-framebuffer, RGB555 dither, vertex snapping, affine textures) is produced by
-the renderer itself. `psx-arcade`, `dresser` and `example-lamp` go through that
-pipeline; `tiny-theft-man` and `swiss-cheese` set `psx.enabled: false` and get
-the clean antialiased studio render instead.
+`models/` — no manual retouching, no external assets. Everything is produced by
+the renderer itself: a neutral PBR studio with image-based lighting, soft
+shadows and ACES tone mapping, on a shadow-catching floor.
 
 | | |
 |:--:|:--:|
-| <img src="docs/images/psx-arcade.png" width="380" alt="Arcade cabinet"> | <img src="docs/images/dresser.png" width="380" alt="Wooden dresser"> |
-| **[psx-arcade](models/psx-arcade.js)** — 680 tris<br>pixel-art screen + marquee, vertex-paint AO | **[dresser](models/dresser.js)** — 587 tris<br>3 sliding drawers, CSG trays, export-ready rig |
+| <img src="docs/images/arcade-cabinet.png" width="380" alt="Arcade cabinet"> | <img src="docs/images/dresser.png" width="380" alt="Wooden dresser"> |
+| **[arcade-cabinet](models/arcade-cabinet.js)** — 680 tris<br>pixel-art screen + marquee, vertex-paint AO | **[dresser](models/dresser.js)** — 587 tris<br>3 sliding drawers, CSG trays, export-ready rig |
 | <img src="docs/images/tiny-theft-man.png" width="380" alt="Voxel character"> | <img src="docs/images/swiss-cheese.png" width="380" alt="Swiss cheese wedge"> |
-| **[tiny-theft-man](models/tiny-theft-man.js)** — 732 tris<br>voxel character, rendered clean (PSX post off) | **[swiss-cheese](models/swiss-cheese.js)** — CSG demo<br>eyes boolean-subtracted, rendered clean (PSX post off) |
+| **[tiny-theft-man](models/tiny-theft-man.js)** — 732 tris<br>voxel character built entirely from boxes | **[swiss-cheese](models/swiss-cheese.js)** — 1,965 tris<br>eyes boolean-subtracted from the wedge (CSG) |
 
 <p align="center">
   <img src="docs/images/example-lamp.png" width="380" alt="Articulated desk lamp"><br>
-  <em><strong><a href="models/example-lamp.js">example-lamp</a></strong> — articulated desk lamp, the scaffold you get from <code>new</code></em>
+  <em><strong><a href="models/example-lamp.js">example-lamp</a></strong> — 2,016 tris · articulated desk lamp: nested pivot groups, lathe dome, faceted by design</em>
 </p>
 
 ## Why this works well for AI
@@ -48,9 +46,10 @@ the clean antialiased studio render instead.
    swallowed/invisible parts, model off the ground, wrong scale, unnamed meshes,
    degenerate geometry... Flagged parts get **automatic close-ups** on the
    contact sheet.
-5. **Quality by default** — PBR lighting studio (key/fill/rim + environment),
-   ACES tone mapping, soft shadows, and a library of ~20 ready-made physical
-   materials (brushed metal, brass, glass, ceramic, rubber...).
+5. **Quality by default** — PBR lighting studio (key/fill/rim + image-based
+   lighting), ACES tone mapping, soft shadows, and a library of ~20 ready-made
+   physical materials (brushed metal, brass, glass, ceramic, rubber...), all
+   flat-shaded so the low-poly facets read as the aesthetic.
 
 ## Installation
 
@@ -112,7 +111,7 @@ export function build({ THREE, mats, helpers: H }) {
 ```
 
 The context provides:
-- **`mats`** — PBR presets: `plastic, glossyPlastic, matte, rubber, metal, chrome,
+- **`mats`** — PBR presets (MeshStandard/Physical, flat-shaded): `plastic, glossyPlastic, matte, rubber, metal, chrome,
   brushedMetal, gold, brass, copper, paintedMetal, glass, frostedGlass, ceramic,
   wood, darkWood, fabric, skin, emissive, custom`
 - **`helpers`** — `group, mesh, place, roundedBox, lathe, tube, cylinder, capsule,

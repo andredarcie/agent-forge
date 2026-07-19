@@ -1,36 +1,33 @@
-// Model: __NAME__  (PSX low-poly — think 1997, not 2026)
+// Model: __NAME__  (low-poly, game-ready)
 // Units are METERS, Y is up, and the model should rest on y=0 (the ground).
 // Build it from named parts so views can be focused with:
 //   node bin/agentforge.mjs render __NAME__ --focus <PartName>
 //
-// PSX rules of thumb:
-//  - Stay inside meta.psx.budget triangles (report shows usage; default 1500).
+// Low-poly rules of thumb:
+//  - Stay inside meta.budget triangles (report shows usage; default 3000).
 //  - Silhouette first: spend triangles where the outline needs them, nowhere else.
-//  - 8-12 segments for cylinders, 10x7 for spheres — chunky is correct.
-//  - Detail comes from tiny textures (tex.*) and vertex colors, not geometry.
+//  - Every triangle should earn its place by changing the shape you actually see.
+//  - Flat shading is the default: let the facets read as planes.
+//  - Detail comes from textures (tex.*) and vertex colors before geometry.
 import * as THREE from 'three';
 
 export const meta = {
   name: '__NAME__',
   description: 'TODO: one-line description of what this model is',
   units: 'meters',
-  psx: {
-    budget: 1500,        // max triangles — the analyzer enforces this
-    // resolution: [320, 240],  // internal framebuffer override
-    // dither: true, snap: true, affine: true,  // pipeline toggles
-  },
+  budget: 1500,          // max triangles — the analyzer enforces this
 };
 
 /**
  * ctx.THREE    — the three.js namespace
- * ctx.mats     — PSX material presets (flat-shaded Lambert/Phong; NO PBR):
+ * ctx.mats     — PBR presets (MeshStandard/Physical, flat-shaded by default):
  *                plastic, glossyPlastic, matte, rubber, metal, chrome,
  *                brushedMetal, gold, brass, copper, paintedMetal, glass,
  *                frostedGlass, ceramic, wood, darkWood, fabric, skin,
  *                emissive(color, intensity), unlit(color), vertexColor(),
- *                textured(map), custom({...MeshPhongMaterial params})
+ *                textured(map), custom({...MeshPhysicalMaterial params})
  *                Add a texture to any preset: mats.plastic(0xfff, { map: tex.checker() })
- * ctx.tex      — low-res procedural textures (64px, nearest, seeded):
+ * ctx.tex      — procedural textures (256px, mipmapped, seeded):
  *                checker(c1,c2), grid(bg,line), stripes([colors]),
  *                bricks(brick,mortar), noise(base), wood(base), gradient(a,b),
  *                pixel([rows], palette)  <- draw pixel art from strings!

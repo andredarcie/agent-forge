@@ -31,20 +31,18 @@ function parseArgs(rest) {
 }
 
 const HELP = `
-AgentForge PSX — AI-native low-poly 3D modeling environment (PS1 aesthetic, Three.js)
+AgentForge — AI-native low-poly 3D modeling environment (Three.js)
 
-Every render goes through an authentic PS1 pipeline: 320x240 framebuffer,
-RGB555 color + 4x4 ordered dither, vertex snapping, affine texture warp,
-flat-shaded Lambert/Phong materials and a triangle budget.
+Models are written as JavaScript, rendered headlessly in a neutral PBR studio
+(image-based lighting, soft shadows, ACES) and analyzed: triangle budget,
+assembly structure, per-part visibility.
 
 Usage: node bin/agentforge.mjs <command> [args]
 
 Commands:
   new <name>                Create models/<name>.js from a commented starter template
-  render <name>             Headless PSX render: multi-view PNGs + contact sheet + data report
-      --size WxH            Output resolution (default 960x720 = 3x the PSX framebuffer)
-      --psx-res WxH         Internal PSX framebuffer (default 320x240; try 256x240, 512x240)
-      --hd                  Disable the PSX pipeline (clean modern render, geometry debugging)
+  render <name>             Headless render: multi-view PNGs + contact sheet + data report
+      --size WxH            Output resolution (default 960x720)
       --views a,b,c         Views: persp,persp2,front,back,right,left,top,bottom,wire
       --focus <ObjectName>  Frame the camera on one named part (close-up iteration)
       --isolate             With --focus: hide everything except the focused part
@@ -63,7 +61,7 @@ Typical AI workflow:
   1. node bin/agentforge.mjs new mymodel
   2. edit models/mymodel.js        (low-poly! check the budget in the report)
   3. node bin/agentforge.mjs render mymodel
-  4. READ renders/mymodel/sheet.png  (visually verify the model AND the PS1 look)
+  4. READ renders/mymodel/sheet.png  (visually verify silhouette, form and detail)
   5. refine models/mymodel.js and re-render; use --focus <Part> for close-ups
 `;
 
@@ -90,7 +88,6 @@ async function main() {
       requireModel(name);
       const { renderModel } = await import('../src/capture.mjs');
       const size = typeof flags.size === 'string' ? flags.size.split(/[x,]/i).map(Number) : [960, 720];
-      const psxRes = typeof flags['psx-res'] === 'string' ? flags['psx-res'].split(/[x,]/i).map(Number) : null;
       const opts = {
         width: size[0] || 960,
         height: size[1] || 720,
@@ -101,8 +98,6 @@ async function main() {
         out: typeof flags.out === 'string' ? flags.out : null,
         json: !!flags.json,
         verbose: !!flags.verbose,
-        hd: !!flags.hd,
-        psxRes: psxRes && psxRes[0] > 0 && psxRes[1] > 0 ? psxRes : null,
       };
       // --focus accepts a comma-separated list; each part gets its own run
       const focusList = typeof flags.focus === 'string'

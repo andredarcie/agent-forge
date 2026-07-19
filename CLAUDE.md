@@ -1,61 +1,68 @@
-# AgentForge PSX — AI-native low-poly 3D modeling (PS1 aesthetic, Three.js)
+# AgentForge — AI-native low-poly 3D modeling (Three.js)
 
-This tool does ONE thing and aims to be the best in the world at it: **low-poly
-3D models with an authentic PlayStation-1 aesthetic**. You (the AI agent) build
-models by writing JavaScript in `models/*.js`, rendering them headlessly through
-a faithful PS1 pipeline, **looking at the rendered images**, and iterating.
-Everything runs locally; renders take a few seconds.
+This tool does ONE thing and aims to be the best in the world at it:
+**high-quality low-poly 3D models**. You (the AI agent) build models by writing
+JavaScript in `models/*.js`, rendering them headlessly, **looking at the
+rendered images**, and iterating. Everything runs locally; renders take a few
+seconds.
 
-Every render is processed like 1997: a 320×240 framebuffer upscaled with
-nearest-neighbor, RGB555 color (15-bit) with the PS1 GPU's 4×4 ordered dither,
-vertex snapping to the pixel grid (polygon jitter), affine texture warping,
-flat-shaded Lambert/Phong materials, no shadow maps, no tone mapping, and a
-blob shadow on a checkerboard floor.
+Renders come out of a neutral PBR studio: image-based lighting from a room
+environment, a warm key with soft shadows, cool fill and rim, ACES tone
+mapping, on a shadow-catching floor with a reference grid. The studio exists to
+judge form — it never stylizes the model.
 
-## The PSX design philosophy (what makes a model GOOD here)
+## The design philosophy (what makes a model GOOD here)
 
-1. **Silhouette first.** Spend triangles where the outline needs them; delete
-   everything else. A PS1 artist got a whole character in 400 tris.
-2. **Budget is law.** `meta.psx.budget` (default 1500) is enforced by the
-   analyzer. Guides: small prop 100–400, furniture/machine 300–800, hero
-   prop/character 800–1500. If you're over, simplify — don't raise the budget
+1. **Silhouette first.** A low-poly model is read by its outline before
+   anything else. Spend triangles where the outline needs them; delete
+   everything else. If a triangle does not change the shape you actually see,
+   it is waste.
+2. **Budget is law.** `meta.budget` (default 3000) is enforced by the analyzer.
+   Guides: small prop 200–800, furniture/machine 800–2500, vehicle 2000–6000,
+   character 3000–8000. If you are over, simplify — do not raise the budget
    without a reason.
-3. **Chunky is correct.** 8–12 segments per cylinder, 10×7 spheres, chamfers
-   instead of fillets. If a curve looks smooth in the render, you wasted tris.
-4. **Detail lives in textures and vertex colors, not geometry.** Panel lines,
-   grain, screws, decals: draw them with `tex.*` (64px, point-sampled) or
-   paint them with `H.vertexPaint` (fake AO, gradients).
-5. **Photographic, never cartoon.** PS1 games textured everything with
-   digitized photos (Metal Gear Solid, Resident Evil, Gran Turismo). Every
-   `mats.*` preset already carries subtle photo grain by default; the `tex.*`
-   generators bake in fractal tone variation, grime and wear. Amplify that:
-   muted/desaturated palettes over pure hues, dirt over cleanliness. Flat
-   vector-looking fills are a defect. Reserve `tex.pixel` for screens, signs
-   and decals — never as a surface material.
-6. **Big textured quads warp.** Affine mapping bends textures on large polygons
-   seen at an angle — authentic, but if it garbles something important
-   (text, a face), subdivide that surface or shrink the quad, exactly like a
-   1997 artist would.
-7. **PBR is forbidden.** MeshStandard/MeshPhysical break the look and get
-   flagged. Use `mats.*` presets (Lambert/Phong) or `mats.unlit`.
+3. **Facets are the aesthetic, not a compromise.** Materials are flat-shaded by
+   default so every triangle catches its own value. Keep segment counts low
+   enough that the planes read: 8–16 per cylinder, 10×7 spheres, 16-segment
+   lathes. Reach for `{ flatShading: false }` only on genuinely organic
+   surfaces (skin, cloth). A curve that looks perfectly smooth usually means
+   triangles were spent for nothing.
+4. **Deliberate, even topology.** Facet sizes should be reasonably consistent
+   across a surface — a dense patch next to a coarse one reads as a mistake.
+   Chamfer with `roundedBox` instead of filleting; a single chamfer loop does
+   more for perceived quality than a dozen smoothing segments.
+5. **Detail comes from shading before geometry.** Panel lines, grain, wear,
+   fake ambient occlusion: paint them with `H.vertexPaint` (free, no texture)
+   or `tex.*` (256px, mipmapped) before you consider modeling them.
+6. **Color with intent.** Materials are PBR (metalness/roughness), lit by a
+   real environment, so metals need `metalness: 1` and a low roughness to read
+   as metal. The studio applies ACES tone mapping, which desaturates roughly
+   15% — pre-saturate slightly to land on the tone you intend. A cohesive,
+   slightly restrained palette reads as designed; ten saturated hues read as a
+   test scene.
+7. **Clean is the default; wear is a choice.** The `tex.*` generators no longer
+   bake in grime. Add it deliberately (`{ dirty: 0.2 }`, or `tex.grunge`
+   multiplied over a color) when the object should look used.
 
 ## The core loop
 
 ```
 1. node bin/agentforge.mjs new <name>          # scaffold models/<name>.js
 2. edit models/<name>.js                       # write/refine the geometry
-3. node bin/agentforge.mjs render <name>       # PSX render + data report
+3. node bin/agentforge.mjs render <name>       # render + data report
 4. READ renders/<name>/sheet.png               # ← ACTUALLY LOOK at the image
-5. go to 2 until it looks right AND reads as PS1
+5. go to 2 until the form reads right at a glance
 ```
 
 Step 4 is not optional. The contact sheet shows 8 views (2 perspective, 5
 orthographic, 1 wireframe) plus a data card with the budget bar. Visually
 check: proportions, part placement, interpenetration, floating parts, wrong
-orientations, material readability — AND the PSX read: is the silhouette
-chunky? do textures resolve at 320×240? is anything mushy or over-smooth?
-Parts flagged by structural issues get automatic close-up cells (orange
-border, rendered clean without dither) appended to the sheet — never ignore them.
+orientations, material readability — AND the craft read: is the silhouette
+clear? do the facets sit evenly, or is one patch mangled? does anything look
+accidentally smooth or accidentally faceted? Read the wireframe cell to judge
+topology, not just the beauty views. Parts flagged by structural issues get
+automatic close-up cells (orange border) appended to the sheet — never ignore
+them.
 
 ## Mandatory verification protocol (learned the hard way)
 
@@ -64,9 +71,8 @@ while its shade was attached by the rim to the arm, with the joint floating in
 front of the bulb. Before declaring any model done:
 
 1. **Zero `[warn]`/`[error]` issues.** Structural errors (TENUOUS ATTACHMENT,
-   FLOATING ASSEMBLY, NON-STRUCTURAL SUPPORT, INVISIBLE PART) and PSX errors
-   (POLY BUDGET EXCEEDED, PBR materials, oversized textures) are never
-   acceptable.
+   FLOATING ASSEMBLY, NON-STRUCTURAL SUPPORT, INVISIBLE PART) and budget
+   errors (POLY BUDGET EXCEEDED, oversized textures) are never acceptable.
 2. **Read the "Assembly interfaces" section** of the render output. For each
    group it lists exactly which parts carry it. Ask: does this mount make
    physical sense? A shade mounted "via Bulb" or "GRAZING" is wrong even if it
@@ -86,7 +92,7 @@ front of the bulb. Before declaring any model done:
    another only produces a thin crossing ring (reads as GRAZING). To make a
    stacked joint strong, overlap the sections a FEW MILLIMETERS so the two
    large faces sit near-coplanar — e.g. a cabinet section whose bottom face
-   is 8mm below the top face of the section beneath it (see models/psx-arcade.js).
+   is 8mm below the top face of the section beneath it (see models/arcade-cabinet.js).
    Concretely: **aim for ~8mm face separation on a ~1.5m model** — 12-15mm sits
    at the tolerance edge and flakes between runs. And since strength ≈ contact
    area / the part's TOTAL surface, long thin parts (arms, columns) need a
@@ -96,18 +102,16 @@ front of the bulb. Before declaring any model done:
 
 ```
 node bin/agentforge.mjs new <name>              scaffold a new model
-node bin/agentforge.mjs render <name>           PSX render → renders/<name>/
+node bin/agentforge.mjs render <name>           render → renders/<name>/
     --focus <ObjectName>                        close-up framed on one named part
     --isolate                                   (with --focus) hide everything else
     --views persp,front,top,...                 subset of: persp persp2 front back right left top bottom wire
     --turntable                                 add 8 rotating views (views/turn0..7.png)
-    --size 1280x960                             output size (default 960x720 = 3× PSX framebuffer)
-    --psx-res 512x240                           internal framebuffer (default 320x240; also authentic: 256x240, 640x480)
-    --hd                                        disable the PSX pipeline (clean PBR studio, geometry debugging ONLY)
+    --size 1280x960                             output size (default 960x720)
     --no-sheet                                  skip contact sheet (faster for quick checks)
 node bin/agentforge.mjs inspect <name>          full JSON report only, no images (fastest)
 node bin/agentforge.mjs export <name>           → exports/<name>.glb
-node bin/agentforge.mjs dev                     live PSX viewer at http://127.0.0.1:4747 (hot reload, X toggles FX)
+node bin/agentforge.mjs dev                     live viewer at http://127.0.0.1:4747 (hot reload)
 node bin/agentforge.mjs list                    list models
 ```
 
@@ -121,12 +125,9 @@ Iteration tips:
   each call is its own process.
 - Quick shape check: `render <name> --views persp,front,right --no-sheet` then read the 3 PNGs.
 - Detail work on one part: `render <name> --focus PartName --views persp,front --no-sheet`.
-- Judging raw geometry (joints, interpenetration): add `--hd` — dither hides
-  small defects. Judging the LOOK: never use `--hd` (exception: models with
-  `psx.enabled: false`, which are HD by design).
-- HD mode (`--hd` or `psx.enabled: false`) applies ACES tone mapping, which
-  desaturates ~15%: pre-saturate material colors to land on the intended tone
-  (see models/tiny-theft-man.js).
+- Judging topology (facet distribution, stray triangles): read the `wire` view.
+- The studio applies ACES tone mapping, which desaturates ~15%: pre-saturate
+  material colors to land on the intended tone (see models/tiny-theft-man.js).
 - `report.json` / `inspect` give exact world positions and sizes of every named
   part — use them to compute joint positions instead of guessing.
 
@@ -138,11 +139,7 @@ import * as THREE from 'three';                    // full three.js available
 
 export const meta = {
   name, description, units: 'meters',
-  psx: {
-    budget: 800,              // triangle budget (default 1500) — enforced
-    // resolution: [320, 240],  // framebuffer override
-    // dither: true, snap: true, affine: true, enabled: true,  // pipeline toggles
-  },
+  budget: 800,                // triangle budget (default 3000) — enforced
 };
 
 export function build({ THREE, mats, helpers: H, tex }) {   // may be async
@@ -169,53 +166,52 @@ Rules that keep quality high (violations are flagged in the report's `issues`):
 - **Build hierarchically with pivot groups.** For articulated parts, position
   the group at the joint, add the geometry offset inside it, rotate the group.
 - **Stay inside the budget** — check `H.triCount(root)` mid-build if unsure.
-- **Use `mats` presets; never PBR.** `mats.unlit` is legitimate (screens, signs).
+- **Use `mats` presets.** They are PBR (metalness/roughness) and flat-shaded by
+  default. `mats.unlit` is legitimate for screens, signs and decals.
 
 ## Available context
 
-`mats.*` — flat-shaded PS1 materials (each returns a fresh instance; last arg =
+`mats.*` — flat-shaded PBR materials (each returns a fresh instance; last arg =
 param overrides, e.g. `mats.plastic(0xffffff, { map: tex.checker() })`):
 plastic(color), glossyPlastic(color), matte(color), rubber(color),
 metal(color, rough), chrome(), brushedMetal(color), gold(), brass(), copper(),
 paintedMetal(color), glass(color), frostedGlass(color), ceramic(color),
 wood(color), darkWood(), fabric(color), skin(color),
 emissive(color, intensity), unlit(colorOrWhite, {map}), vertexColor(),
-textured(map), custom({any MeshPhongMaterial params})
-- **Every lit preset ships with photographic grain by default** (grayscale
-  map multiplied under the color: speckle on plastics, wear streaks on
-  metals, real grain on woods, blotches on matte/fabric). Override with your
-  own `{ map: tex.wood(...) }`, or force a clean fill with `{ map: null }`
-  (rarely right — flat fills read as cartoon).
-- Pass `{ flatShading: false }` for smooth gouraud shading on organic shapes.
-- glass/frostedGlass are alpha-blended (PS1 semi-transparency) and count as
-  non-structural, like emissive — never make them the only mount.
+textured(map), custom({any MeshPhysicalMaterial params})
+- **Presets are MeshStandard/MeshPhysical, flat-shaded by default** — the
+  facets are the look. Add a texture with `{ map: tex.wood(...) }`.
+- Pass `{ flatShading: false }` for smooth normals on organic shapes only.
+- Metals need `metalness: 1` to read as metal under the environment light; the
+  `metal`/`chrome`/`gold`/`brass`/`copper` presets already set it.
+- glass/frostedGlass are alpha-blended and count as non-structural, like
+  emissive — never make them the only mount.
 
-`tex.*` — procedural low-res textures (64px default, NearestFilter, no mips,
-seeded/deterministic), tuned to read as DIGITIZED PHOTOS: fractal tone
-variation, grime and wear are baked in by default. PS1 textures were ≤128px;
->256px is flagged:
-- Photographic surfaces: `tex.wood(base, {planks, horizontal})` (grain streaks,
-  knots, plank seams), `tex.concrete(base)`, `tex.metalWorn(base)`,
-  `tex.noise(base, {amount})` (fractal tone), `tex.grunge(base, {amount})`
-  (heavy stains — great multiplied over a color as dirt).
-- Patterns (grime baked in; `dirty: 0` for clean): `tex.checker(c1, c2, {cells})`,
-  `tex.grid(bg, line)`, `tex.stripes([colors])`, `tex.bricks(brick, mortar)`.
-- `tex.gradient(top, bottom)` — clean vertical gradient (skies, glows).
+`tex.*` — procedural textures (256px default, mipmapped + linear filtering,
+seeded/deterministic). Wear is opt-in, not baked in. >1024px is flagged:
+- Surfaces: `tex.wood(base, {planks, horizontal})` (grain streaks, knots, plank
+  seams), `tex.concrete(base)`, `tex.metalWorn(base)`, `tex.noise(base,
+  {amount})` (fractal tone), `tex.grunge(base, {amount})` (heavy stains — great
+  multiplied over a color as dirt).
+- Patterns (clean by default; pass `dirty: 0.2` to age them):
+  `tex.checker(c1, c2, {cells})`, `tex.grid(bg, line)`, `tex.stripes([colors])`,
+  `tex.bricks(brick, mortar)`.
+- `tex.gradient(top, bottom)` — vertical gradient (skies, glows).
 - `tex.pixel([rows], palette)` — **pixel art from strings**, one char per texel
-  (`'.'`/`' '` = transparent). Screens, signs, decals ONLY — never a surface.
-  See models/psx-arcade.js for a screen and a marquee.
+  (`'.'`/`' '` = transparent), always nearest-filtered. Screens, signs, decals.
+  See models/arcade-cabinet.js for a screen and a marquee.
 - `tex.canvas(size, (ctx, w, h) => {...})` — raw 2D-canvas escape hatch.
 - Textures tile: `t.repeat.set(4, 2)` on the returned texture.
 
 `helpers.*` (aliased `H`):
 - `group(name, ...children)` / `mesh(name, geo, mat, {pos:[x,y,z], rot:[rx,ry,rz], scale})`
 - `place(obj, [x,y,z], {rot, scale})` — terse transform, returns obj
-- **Primitives** (segment defaults are already PSX-appropriate — don't raise
-  them casually): `box(w,h,d)` (12 tris), `roundedBox(w,h,d,r?)` (chamfered),
+- **Primitives** (segment defaults are already low-poly-appropriate — don't
+  raise them casually): `box(w,h,d)` (12 tris), `roundedBox(w,h,d,r?)` (chamfered),
   `cylinder(rTop, rBottom, h, seg=12)` / `cone(r, h, seg=8)` / `capsule(r, h)`
   (base at y=0), `sphere(r, 10, 7)`, `icosphere(r, detail)` (20/80/320 tris),
   `lathe([[radius, y], ...], seg=16)`, `tube([[x,y,z], ...], radius)`
-- **PSX tools**: `facet(geo)` — hard per-face normals (also bakes into GLB);
+- **Shaping tools**: `facet(geo)` — hard per-face normals (also bakes into GLB);
   `quantizeVerts(geo, step)` — snap verts to a world grid (chunky organic
   shapes); `vertexPaint(meshOrGeo, ([x,y,z]) => color)` — per-vertex colors
   for fake AO/gradients (auto-enables vertexColors); `triCount(obj)`
@@ -270,19 +266,18 @@ cleanup. `build()` well and the export handles the rest:
 - **Rest pose** — model closed/neutral (see the rest-pose rule above), so the
   received asset is the canonical state.
 
-The PSX screen effects (dither, 320×240, vertex jitter, affine warp) are
-*render-time* only — they are NOT baked into the GLB. The model is inherently
-retro (low-poly + nearest textures); for the full PS1 look in-engine, the
-integrator adds a PSX shader on their side.
+Materials export straight through: the `mats.*` presets are already glTF's
+metalness/roughness model, and `facet()` bakes hard normals into the mesh, so
+the faceted look survives the round trip into any engine.
 
 ## Reading the render output
 
-`render` prints: dimensions, triangle/mesh counts, **PSX budget usage**,
+`render` prints: dimensions, triangle/mesh counts, **budget usage**,
 materials, **assembly interfaces**, **issues**, and the full structure tree
 with world position + size of every part. `renders/<name>/report.json`
 additionally contains:
 
-- `psx` — budget, triangles, pctOfBudget, withinBudget, pipeline settings
+- `budget` — budget, triangles, pctOfBudget, withinBudget
 - `structure.contacts` — every touching pair of meshes with `gap` (meters) and
   `strength` (fraction of surface samples in contact; <0.1 = grazing, likely
   accidental; >=0.13 = real overlap/attachment)
@@ -302,13 +297,13 @@ Treat every `[warn]`/`[error]` issue as a bug to fix. Structural ones:
 - **INVISIBLE PART** — swallowed geometry; fix its position or mark
   `userData.interior = true` if intentional
 
-PSX ones: **POLY BUDGET EXCEEDED** (simplify the flagged heavy meshes first),
-**PBR materials** (switch to mats presets), **oversized textures** (use tex.*).
+Budget ones: **POLY BUDGET EXCEEDED** (simplify the flagged heavy meshes
+first), **oversized textures** (use the tex.* generators).
 Others: not grounded, wrong scale for meters, unnamed meshes, degenerate geometry.
 
 ## Reference models
 
-- `models/psx-arcade.js` — the showcase: box modeling, chamfers, tex.pixel
+- `models/arcade-cabinet.js` — the showcase: box modeling, chamfers, tex.pixel
   screen + marquee, unlit/emissive done right, vertex-paint AO, near-coplanar
   stacked joints, 680/800 tris.
 - `models/dresser.js` — articulated furniture done export-ready:
@@ -319,8 +314,12 @@ Others: not grounded, wrong scale for meters, unnamed meshes, degenerate geometr
   tenuous), square-section corner battens bridging perpendicular panels,
   runner frames with side guides (union) so drawers mount through what they
   slide on, horizontal-grain wood fronts.
-- `models/example-lamp.js`, `models/swiss-cheese.js` — legacy pre-PSX models
-  (over budget by design); swiss-cheese documents the CSG-clean-base technique.
+- `models/example-lamp.js` — articulation via nested pivot groups, lathe/tube
+  helpers, and a low-seg lathe dome whose facets read as the shape (2,016/2,500).
+- `models/swiss-cheese.js` — the CSG reference: documents the clean-base
+  technique and keeps segment counts low so the booleans stay robust.
+- `models/tiny-theft-man.js` — voxel-art character built entirely from boxes,
+  with a per-cell jitter map standing in for per-voxel tone.
 
 ## Architecture (for maintaining the tool itself)
 
@@ -328,22 +327,16 @@ Others: not grounded, wrong scale for meters, unnamed meshes, degenerate geometr
 - `src/server.mjs` — static server + SSE hot reload + screenshot API
 - `src/capture.mjs` — puppeteer-core orchestration (uses local Chrome/Edge, no download)
 - `web/headless.{html,js}` — capture page: renders views, composes sheet, exports GLB
-- `web/viewer.{html,js}` — live PSX viewer (OrbitControls, data panel, hot reload,
-  PSX toggle)
+- `web/viewer.{html,js}` — live viewer (OrbitControls, data panel, hot reload)
 - `web/common/` — shared:
-  - `psx.js` — **the PS1 pipeline**: PSXPost (320×240 target, RGB555 quantize +
-    Bayer dither, nearest upscale) and material patching (vertex snap + affine
-    UVs via onBeforeCompile, toggleable per-view through shared uniforms)
   - `textures.js` — the `tex.*` procedural texture toolkit
-  - `materials.js` — flat-shaded Lambert/Phong presets (no PBR)
-  - `stage.js` — PSX stage (simple lights, checker floor, blob shadow, fog) +
-    legacy HD studio for `--hd`
-  - `helpers.js` — geometry helpers + PSX tools (facet, quantizeVerts, vertexPaint)
-  - `analyze.js` — report generator + budget/PBR/texture checks
+  - `materials.js` — flat-shaded MeshStandard/MeshPhysical presets
+  - `stage.js` — the PBR studio (IBL from RoomEnvironment, key/fill/rim, soft
+    shadows, shadow-catcher floor + grid) and the named-view camera system
+  - `helpers.js` — geometry helpers + shaping tools (facet, quantizeVerts,
+    vertexPaint)
+  - `analyze.js` — report generator + budget/texture checks
   - `contacts.js` — BVH contact graph (floating/tenuous/non-structural checks)
-  - `visibility.js` — per-part ID-pass pixel coverage (swallowed/hidden parts;
-    runs before material patching, unaffected by the PSX pipeline)
+  - `visibility.js` — per-part ID-pass pixel coverage (swallowed/hidden parts)
 - Headless WebGL runs on SwiftShader (`--enable-unsafe-swiftshader`); browser
   located by `src/browser-finder.mjs`, overridable via `AGENTFORGE_BROWSER` env var.
-- Diagnostic renders (wireframe view, issue close-ups) bypass the PSX post so
-  defects stay crisp; beauty views always go through it.

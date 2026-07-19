@@ -7,6 +7,7 @@ export const meta = {
   name: 'example-lamp',
   description: 'Retro articulated desk lamp with a weighted base, two-segment arm and dome shade',
   units: 'meters',
+  budget: 2500,
 };
 
 export function build({ THREE, mats, helpers: H }) {
@@ -30,8 +31,8 @@ export function build({ THREE, mats, helpers: H }) {
       [0.020, 0.046],
       [0.014, 0.048],
       [0.000, 0.048],
-    ], 64), green),
-    H.mesh('BaseTrimRing', new THREE.TorusGeometry(0.082, 0.004, 12, 64), brass, {
+    ], 16), green),
+    H.mesh('BaseTrimRing', new THREE.TorusGeometry(0.082, 0.004, 6, 16), brass, {
       pos: [0, 0.006, 0], rot: [Math.PI / 2, 0, 0],
     }),
     H.mesh('BaseNeck', H.cylinder(0.011, 0.013, 0.035), green, { pos: [0, 0.046, 0] }),
@@ -44,7 +45,7 @@ export function build({ THREE, mats, helpers: H }) {
   lowerArm.position.set(0, 0.078, 0);
   lowerArm.rotation.z = deg(-24); // lean back
   lowerArm.add(
-    H.mesh('LowerArmJoint', new THREE.SphereGeometry(0.016, 24, 16), brass),
+    H.mesh('LowerArmJoint', new THREE.SphereGeometry(0.016, 10, 7), brass),
     H.mesh('LowerArmKnob', H.cylinder(0.007, 0.007, 0.048), dark, {
       pos: [0, 0, -0.024], rot: [Math.PI / 2, 0, 0],
     }),
@@ -57,7 +58,7 @@ export function build({ THREE, mats, helpers: H }) {
   upperArm.position.set(0, ARM_LEN, 0);
   upperArm.rotation.z = deg(88); // fold forward
   upperArm.add(
-    H.mesh('ElbowJoint', new THREE.SphereGeometry(0.015, 24, 16), brass),
+    H.mesh('ElbowJoint', new THREE.SphereGeometry(0.015, 10, 7), brass),
     H.mesh('ElbowKnob', H.cylinder(0.007, 0.007, 0.046), dark, {
       pos: [0, 0, -0.023], rot: [Math.PI / 2, 0, 0],
     }),
@@ -88,30 +89,35 @@ export function build({ THREE, mats, helpers: H }) {
       [0.066, 0.036],
       [0.071, 0.062],
       [0.072, 0.080],
-    ], 64), mats.paintedMetal(0x2e5540, { side: THREE.DoubleSide })),
-    H.mesh('ShadeRim', new THREE.TorusGeometry(0.0715, 0.0035, 12, 64), brass, {
+    ], 16), mats.paintedMetal(0x2e5540, { side: THREE.DoubleSide })),
+    H.mesh('ShadeRim', new THREE.TorusGeometry(0.0715, 0.0035, 6, 16), brass, {
       pos: [0, 0.080, 0], rot: [Math.PI / 2, 0, 0],
     }),
-    H.mesh('Bulb', new THREE.SphereGeometry(0.026, 32, 24), mats.emissive(0xfff3d6, 4), {
+    H.mesh('Bulb', new THREE.SphereGeometry(0.026, 12, 8), mats.emissive(0xfff3d6, 4), {
       pos: [0, 0.032, 0],
     }),
     socket, // overlaps the shell back AND the bulb: solid structural chain
   );
 
-  const headJoint = H.mesh('HeadJoint', new THREE.SphereGeometry(0.014, 24, 16), brass);
+  const headJoint = H.mesh('HeadJoint', new THREE.SphereGeometry(0.014, 10, 7), brass);
   head.add(headJoint, shade);
   // Weld the shade's closed back (its local origin) onto the joint sphere so
   // the arm grips the shade from behind — anchor points, not offset math.
   H.snap(shade, [0, 0, 0], headJoint, [0, 0.008, 0]);
   upperArm.add(head);
 
-  // --- Cable: springs out of the base toward the back ----------------------
+  // --- Cable: runs down the inside of the dome, then out the back ----------
+  // A long thin part needs a proportionally long contact band, so the first
+  // three points track just inside the dome wall (radius kept a few mm under
+  // the lathe profile at each height) instead of poking through it at a
+  // single point, which the contact analysis reads as grazing.
   root.add(
     H.mesh('Cable', H.tube([
-      [0.020, 0.030, -0.055],
-      [0.035, 0.012, -0.095],
-      [0.030, 0.004, -0.150],
-      [-0.010, 0.004, -0.200],
+      [0.018, 0.030, -0.059],
+      [0.021, 0.024, -0.069],
+      [0.023, 0.014, -0.075],
+      [0.030, 0.006, -0.120],
+      [0.010, 0.004, -0.190],
     ], 0.0035), dark),
   );
 

@@ -12,12 +12,7 @@ export const meta = {
   name: 'tiny-theft-man',
   description: 'Voxel-art man from the Tiny Theft Auto key art: tank top, gold chain, pistol raised',
   units: 'meters',
-  psx: {
-    budget: 900,
-    // Rendered clean/HD by request: no PSX post (no 320x240 upscale, no
-    // dither, no vertex snap) — antialiased studio render instead.
-    enabled: false,
-  },
+  budget: 900,
 };
 
 export function build({ THREE, mats, helpers: H, tex }) {

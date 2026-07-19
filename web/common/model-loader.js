@@ -34,20 +34,21 @@ export async function loadModel(name) {
     if (o.isMesh) {
       o.castShadow = o.userData.noShadow ? false : true;
       o.receiveShadow = true;
-      // PSX guard-rail: the PS1 point-sampled everything. Force nearest
-      // filtering and no mipmaps on every texture, wherever it came from.
+      // Textures authored outside tex.* (raw CanvasTexture, loaded images)
+      // arrive without mipmaps, which aliases badly on the small faces of a
+      // low-poly model. Generate them unless the texture asked for nearest
+      // filtering on purpose (pixel art).
       const mList = Array.isArray(o.material) ? o.material : [o.material];
       for (const m of mList) {
         if (!m) continue;
         for (const key of Object.keys(m)) {
           const t = m[key];
-          if (t && t.isTexture) {
-            if (t.magFilter !== THREE.NearestFilter || t.minFilter !== THREE.NearestFilter) {
-              t.magFilter = THREE.NearestFilter;
-              t.minFilter = THREE.NearestFilter;
-              t.generateMipmaps = false;
-              t.needsUpdate = true;
-            }
+          if (!t || !t.isTexture || t.isRenderTargetTexture) continue;
+          const pixelArt = t.magFilter === THREE.NearestFilter;
+          if (!pixelArt && !t.generateMipmaps) {
+            t.generateMipmaps = true;
+            t.minFilter = THREE.LinearMipmapLinearFilter;
+            t.needsUpdate = true;
           }
         }
       }

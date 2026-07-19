@@ -1,12 +1,12 @@
 // Scene analyzer: extracts the structured data an AI agent needs to reason
-// about a model — dimensions, hierarchy, geometry stats, materials, the PSX
+// about a model — dimensions, hierarchy, geometry stats, materials, the
 // triangle budget, and a list of detected modeling issues.
 import * as THREE from 'three';
 
-// Default PSX triangle budget. A PS1 pushed ~2000-4000 textured tris per
-// FRAME; a single hero prop or character was 300-800. 1500 is generous for a
-// standalone showcase model. Override per model with meta.psx.budget.
-export const DEFAULT_PSX_BUDGET = 1500;
+// Default triangle budget for a game-ready low-poly asset. Rough guides:
+// small prop 200-800, furniture/machine 800-2500, vehicle 2000-6000,
+// character 3000-8000. Override per model with meta.budget.
+export const DEFAULT_BUDGET = 3000;
 
 const r4 = (n) => Math.round(n * 10000) / 10000;
 const v3 = (v) => [r4(v.x), r4(v.y), r4(v.z)];
@@ -24,7 +24,6 @@ export function analyze(root, { meta = {}, modelName = root.name } = {}) {
   const unnamedMeshes = [];
   const nonUniformScale = [];
   const degenerate = [];
-  const pbrMaterials = [];
   const bigTextures = [];
   const heavyMeshes = [];
   const namedObjects = new Set();
@@ -50,10 +49,9 @@ export function analyze(root, { meta = {}, modelName = root.name } = {}) {
       const mList = Array.isArray(o.material) ? o.material : [o.material];
       for (const m of mList) {
         if (!m) continue;
-        if (m.isMeshStandardMaterial || m.isMeshPhysicalMaterial) pbrMaterials.push(pathOf(o));
         for (const key of Object.keys(m)) {
           const t = m[key];
-          if (t && t.isTexture && t.image && Math.max(t.image.width || 0, t.image.height || 0) > 256) {
+          if (t && t.isTexture && t.image && Math.max(t.image.width || 0, t.image.height || 0) > 1024) {
             bigTextures.push(`${pathOf(o)} (${t.image.width}x${t.image.height})`);
           }
         }
@@ -184,15 +182,14 @@ export function analyze(root, { meta = {}, modelName = root.name } = {}) {
     });
   }
 
-  // ---- PSX aesthetic checks -------------------------------------------------
-  const psxMeta = meta.psx || {};
-  const budget = Number(psxMeta.budget) > 0 ? Number(psxMeta.budget) : DEFAULT_PSX_BUDGET;
+  // ---- Low-poly budget checks -----------------------------------------------
+  const budget = Number(meta.budget) > 0 ? Number(meta.budget) : DEFAULT_BUDGET;
   const pct = Math.round((stats.triangles / budget) * 100);
   if (stats.triangles > budget) {
     issues.push({
       level: 'warn',
       message: `POLY BUDGET EXCEEDED: ${stats.triangles.toLocaleString()} tris > budget ${budget.toLocaleString()} (${pct}%). ` +
-        `This is not a PS1 model. Lower segment counts, replace curves with facets, or delete detail the silhouette doesn't need.` +
+        `Lower segment counts, replace curves with facets, or delete detail the silhouette doesn't need.` +
         (heavyMeshes.length ? ` Heaviest meshes: ${heavyMeshes.sort((x, y) => y.tris - x.tris).slice(0, 4).map((h) => `${h.path} (${h.tris})`).join('; ')}` : ''),
     });
   } else if (stats.triangles > budget * 0.85) {
@@ -209,17 +206,11 @@ export function analyze(root, { meta = {}, modelName = root.name } = {}) {
       message: `Single mesh(es) using a big slice of the budget: ${tooHeavy.sort((x, y) => y.tris - x.tris).slice(0, 3).map((h) => `${h.path} (${h.tris} tris)`).join('; ')} — check segment counts.`,
     });
   }
-  if (pbrMaterials.length) {
-    issues.push({
-      level: 'warn',
-      message: `${pbrMaterials.length} mesh(es) use PBR materials (MeshStandard/MeshPhysical) — the PS1 had no PBR; this breaks the look. ` +
-        `Use ctx.mats presets (Lambert/Phong). E.g.: ${[...new Set(pbrMaterials)].slice(0, 3).join('; ')}`,
-    });
-  }
   if (bigTextures.length) {
     issues.push({
       level: 'warn',
-      message: `Texture(s) larger than 256px: ${bigTextures.slice(0, 3).join('; ')} — PS1 VRAM pages topped out at 256x256; use tex.* generators (default 64px).`,
+      message: `Texture(s) larger than 1024px: ${bigTextures.slice(0, 3).join('; ')} — oversized for a low-poly asset; ` +
+        `use the tex.* generators (default 256px) or pass { size: 512 }.`,
     });
   }
 
@@ -228,7 +219,7 @@ export function analyze(root, { meta = {}, modelName = root.name } = {}) {
     meta,
     stats: { ...stats, materials: materialSet.size },
     bounds,
-    psx: {
+    budget: {
       budget,
       triangles: stats.triangles,
       pctOfBudget: pct,

@@ -7,7 +7,6 @@ import { loadModel } from '/web/common/model-loader.js';
 import { analyze } from '/web/common/analyze.js';
 import { analyzeContacts } from '/web/common/contacts.js';
 import { analyzeVisibility } from '/web/common/visibility.js';
-import { PSXPost, createPSXUniforms, patchModelPSX, setPSXArtifacts, PSX_DEFAULTS } from '/web/common/psx.js';
 
 function findByName(root, name) {
   let exact = null;
@@ -33,26 +32,18 @@ async function capture(opts) {
   const {
     model, width = 960, height = 720,
     views = [], focus = null, isolate = false, sheet = true,
-    hd = false, psxRes = null,
   } = opts;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setSize(width, height);
   document.body.appendChild(renderer.domElement);
 
-  let post = null;
   try {
     const { root, meta, error } = await loadModel(model);
     if (error) return { error };
 
-    // PSX pipeline configuration: meta.psx in the model file, overridable by
-    // CLI flags. --hd disables everything (clean modern render for debugging).
-    const psxMeta = (meta && meta.psx) || {};
-    const psxOn = !hd && psxMeta.enabled !== false;
-    const resolution = psxRes || psxMeta.resolution || PSX_DEFAULTS.resolution;
-
-    setupRenderer(renderer, { psx: psxOn });
-    const stage = createStage(renderer, { psx: psxOn });
+    setupRenderer(renderer);
+    const stage = createStage(renderer);
     stage.scene.add(root);
     root.updateMatrixWorld(true);
 
@@ -88,41 +79,14 @@ async function capture(opts) {
       if (isolate) isolateObject(root, target);
     }
 
-    // Patch materials with vertex snap / affine UVs AFTER all analysis passes
-    // so the structural data reflects the pristine geometry.
-    let psxUniforms = null;
-    if (psxOn) {
-      psxUniforms = createPSXUniforms({
-        width: resolution[0], height: resolution[1],
-        snap: psxMeta.snap !== false, affine: psxMeta.affine !== false,
-      });
-      patchModelPSX(root, psxUniforms);
-      post = new PSXPost(renderer, {
-        width: resolution[0], height: resolution[1],
-        dither: psxMeta.dither !== false,
-      });
-      report.psx = {
-        ...report.psx,
-        pipeline: {
-          resolution, dither: psxMeta.dither !== false,
-          snap: psxMeta.snap !== false, affine: psxMeta.affine !== false,
-        },
-      };
-    }
-
     const images = {};
-    // clean=true renders without the PSX pipeline (diagnostic views: the
-    // wireframe cell and the auto issue close-ups need crisp geometry).
-    function renderView(view, box, { clean = false } = {}) {
+    function renderView(view, box) {
       stage.setGround(view.floor !== false);
       stage.setGrid(view.grid !== false && view.type === 'persp' && !view.wireframe);
       stage.setWireframe(!!view.wireframe);
       if (view.wireframe) stage.scene.background = new THREE.Color(0xf7f8fa);
       const cam = makeViewCamera(view, box, width / height);
-      const usePsx = psxOn && !clean && !view.wireframe;
-      if (psxUniforms) setPSXArtifacts(psxUniforms, usePsx);
-      if (usePsx) post.render(stage.scene, cam);
-      else renderer.render(stage.scene, cam);
+      renderer.render(stage.scene, cam);
       const dataURL = renderer.domElement.toDataURL('image/png');
       stage.setWireframe(false);
       stage.scene.background = stage.backgroundColor;
@@ -138,7 +102,6 @@ async function capture(opts) {
 
     // Auto close-ups: every part flagged by a structural issue gets a focused
     // render appended to the output, so the defect is impossible to miss.
-    // Rendered CLEAN (no dither/snap) — these are defect-inspection images.
     const flagged = [...new Set(
       report.issues.filter((i) => i.parts && i.level !== 'info').flatMap((i) => i.parts)
     )].slice(0, 4);
@@ -150,7 +113,7 @@ async function capture(opts) {
         modelBox.getSize(new THREE.Vector3()).length() * 0.06
       );
       const key = `issue-${partName.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
-      images[key] = renderView(VIEWS.persp, box, { clean: true });
+      images[key] = renderView(VIEWS.persp, box);
       autoFocus.push({ key, label: `ISSUE FOCUS: ${partName}` });
     }
 
@@ -162,7 +125,6 @@ async function capture(opts) {
   } catch (e) {
     return { error: String(e && e.stack ? e.stack : e) };
   } finally {
-    if (post) post.dispose();
     renderer.dispose();
     renderer.domElement.remove();
   }
@@ -187,14 +149,14 @@ async function composeSheet(images, viewOrder, report, modelName, autoFocus = []
   // Header
   const b = report.bounds;
   const s = report.stats;
-  const psx = report.psx;
+  const budget = report.budget;
   ctx.fillStyle = '#e8edf4';
   ctx.font = 'bold 24px Segoe UI, Arial, sans-serif';
-  ctx.fillText(`AgentForge PSX — ${modelName}`, 20, 36);
-  const budgetStr = psx
-    ? `budget ${s.triangles.toLocaleString()}/${psx.budget.toLocaleString()} tris (${psx.pctOfBudget}%)${psx.withinBudget ? '' : ' OVER'}`
+  ctx.fillText(`AgentForge — ${modelName}`, 20, 36);
+  const budgetStr = budget
+    ? `budget ${s.triangles.toLocaleString()}/${budget.budget.toLocaleString()} tris (${budget.pctOfBudget}%)${budget.withinBudget ? '' : ' OVER'}`
     : `${s.triangles.toLocaleString()} tris`;
-  ctx.fillStyle = psx && !psx.withinBudget ? '#ff8a5c' : '#93a4bb';
+  ctx.fillStyle = budget && !budget.withinBudget ? '#ff8a5c' : '#93a4bb';
   ctx.font = '15px Consolas, monospace';
   ctx.fillText(
     `W ${b.size[0].toFixed(3)}m  x  H ${b.size[1].toFixed(3)}m  x  D ${b.size[2].toFixed(3)}m   |   ${budgetStr}   |   ${s.meshes} meshes   |   ${s.materials} materials   |   issues: ${report.issues.length}`,
@@ -248,11 +210,10 @@ async function composeSheet(images, viewOrder, report, modelName, autoFocus = []
     };
     line(`size    : ${b.size[0].toFixed(3)} x ${b.size[1].toFixed(3)} x ${b.size[2].toFixed(3)} m (WxHxD)`);
     line(`geometry: ${s.triangles.toLocaleString()} tris / ${s.vertices.toLocaleString()} verts / ${s.meshes} meshes`);
-    if (report.psx) {
+    if (report.budget) {
       line(
-        `psx     : budget ${s.triangles.toLocaleString()}/${report.psx.budget.toLocaleString()} (${report.psx.pctOfBudget}%)` +
-        (report.psx.pipeline ? `  ${report.psx.pipeline.resolution.join('x')} RGB555` : ''),
-        report.psx.withinBudget ? '#7ece8f' : '#ff8a5c'
+        `budget  : ${s.triangles.toLocaleString()}/${report.budget.budget.toLocaleString()} tris (${report.budget.pctOfBudget}%)`,
+        report.budget.withinBudget ? '#7ece8f' : '#ff8a5c'
       );
     }
     line(`objects : ${s.objects}  materials: ${s.materials}`);

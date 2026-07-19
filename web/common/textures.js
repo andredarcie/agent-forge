@@ -1,16 +1,21 @@
-// Procedural low-res texture toolkit (`tex.*` in the build context).
+// Procedural texture toolkit (`tex.*` in the build context).
 //
-// AESTHETIC TARGET: digitized photographs at PS1 resolution — the grubby,
-// noisy, tonally-rich textures of Metal Gear Solid / Resident Evil / Gran
-// Turismo. NOT clean flat cartoon fills. Every generator bakes in fractal
-// tone variation (multi-octave value noise), grime and wear by default, so
-// surfaces read as scanned photos, not vector art.
+// Low-poly models carry their read in silhouette and facets, so textures here
+// are a supporting act: broad material identity (wood grain, concrete tone,
+// brushed metal) rather than fine surface detail. Reach for a texture when a
+// flat color would look inert across a large plane; otherwise a plain color
+// plus H.vertexPaint usually does more with less.
 //
-// All textures are locked to the PS1 look: NearestFilter, no mipmaps, sRGB,
-// repeat wrapping, deterministic (seeded PRNG — renders are reproducible).
+// Textures are 256px squares by default, mipmapped and linearly filtered so
+// they stay clean at any render size, sRGB, repeat-wrapped, and deterministic
+// (seeded PRNG — renders are reproducible).
 //
-// Escape hatches: `tex.pixel` (pixel art from strings — screens, signs,
-// decals ONLY; not for surfaces) and `tex.canvas` (raw 2D drawing).
+// Wear and grime are OPT-IN, not baked in: pass { dirty: 0.2 } on the
+// patterned generators, or multiply tex.grunge over a color, when a surface
+// should read as used. Clean is the default.
+//
+// Escape hatches: `tex.pixel` (pixel art from strings — screens, signs and
+// decals; always nearest-filtered) and `tex.canvas` (raw 2D drawing).
 import * as THREE from 'three';
 
 const css = (c) => '#' + new THREE.Color(c).getHexString();
@@ -62,12 +67,22 @@ function fbm(seed, { octaves = 4, px = 4, py = 4 } = {}) {
   };
 }
 
-function finalize(canvas, { repeat = [1, 1] } = {}) {
+// pixelated:true keeps hard texel edges (pixel art); everything else gets
+// trilinear filtering + mipmaps so it holds up when the model is far away or
+// rendered large.
+function finalize(canvas, { repeat = [1, 1], pixelated = false } = {}) {
   const t = new THREE.CanvasTexture(canvas);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.magFilter = THREE.NearestFilter;
-  t.minFilter = THREE.NearestFilter;
-  t.generateMipmaps = false;
+  if (pixelated) {
+    t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestFilter;
+    t.generateMipmaps = false;
+  } else {
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.generateMipmaps = true;
+    t.anisotropy = 8;
+  }
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(repeat[0], repeat[1]);
   return t;
@@ -135,8 +150,8 @@ export const tex = {
 
   /**
    * Pixel art from strings — one string per row, one char per texel, palette
-   * maps chars to colors. '.' and ' ' are transparent. For SCREENS, SIGNS and
-   * DECALS — not for material surfaces (surfaces should look photographic).
+   * maps chars to colors. '.' and ' ' are transparent. Always nearest-filtered
+   * so the texels stay crisp. For screens, signs, dials and decals.
    */
   pixel(rows, palette, opts = {}) {
     const h = rows.length;
@@ -150,16 +165,16 @@ export const tex = {
         ctx.fillRect(x, y, 1, 1);
       }
     }
-    return finalize(c, opts);
+    return finalize(c, { ...opts, pixelated: true });
   },
 
-  // -- Photographic surface generators ---------------------------------------
+  // -- Surface generators ------------------------------------------------------
 
   /**
    * Wood — plank tint variation, anisotropic grain streaks, knots and seams.
    * horizontal:true runs the grain along U instead of V.
    */
-  wood(base = 0x8a5a2b, { size = 64, planks = 4, horizontal = false, seed = 3, ...opts } = {}) {
+  wood(base = 0x8a5a2b, { size = 256, planks = 4, horizontal = false, seed = 3, ...opts } = {}) {
     const rnd = mulberry32(seed);
     const plankTint = Array.from({ length: planks }, () => 0.85 + rnd() * 0.24);
     // grain: high frequency ACROSS the grain, low frequency ALONG it
@@ -182,7 +197,7 @@ export const tex = {
   },
 
   /** Concrete / plaster — blotchy fbm, fine speckle, occasional pits. */
-  concrete(base = 0x8d8a84, { size = 64, seed = 9, ...opts } = {}) {
+  concrete(base = 0x8d8a84, { size = 256, seed = 9, ...opts } = {}) {
     const blotch = fbm(seed, { octaves: 4, px: 3, py: 3 });
     const speck = latticeNoise(seed + 5, 32, 32);
     return perPixel(size, base, (u, v) => {
@@ -195,7 +210,7 @@ export const tex = {
   },
 
   /** Worn metal — vertical wear streaks, broad stains, bright scratches. */
-  metalWorn(base = 0x9a9ea6, { size = 64, seed = 13, ...opts } = {}) {
+  metalWorn(base = 0x9a9ea6, { size = 256, seed = 13, ...opts } = {}) {
     const streaks = fbm(seed, { octaves: 4, px: 12, py: 2 });
     const stains = fbm(seed + 3, { octaves: 3, px: 3, py: 3 });
     const scratch = latticeNoise(seed + 9, 24, 6);
@@ -208,19 +223,19 @@ export const tex = {
   },
 
   /** Heavy grime/stains — overlay-style blotches (white base = grayscale). */
-  grunge(base = 0xffffff, { size = 64, amount = 0.3, seed = 21, ...opts } = {}) {
+  grunge(base = 0xffffff, { size = 256, amount = 0.3, seed = 21, ...opts } = {}) {
     const blotch = fbm(seed, { octaves: 5, px: 3, py: 3 });
     return perPixel(size, base, (u, v) => 1 - amount + amount * (0.4 + 1.1 * blotch(u, v)), opts);
   },
 
   /** Fractal tone noise around a base color (multi-octave, not TV static). */
-  noise(base = 0x777788, { size = 64, amount = 0.18, seed = 1, ...opts } = {}) {
+  noise(base = 0x777788, { size = 256, amount = 0.18, seed = 1, ...opts } = {}) {
     const n = fbm(seed, { octaves: 4, px: 6, py: 6 });
     return perPixel(size, base, (u, v) => 1 - amount / 2 + amount * n(u, v), opts);
   },
 
   /** Vertical gradient — skies, glows, screen backdrops (kept clean). */
-  gradient(top = 0x30306a, bottom = 0x101018, { size = 64, ...opts } = {}) {
+  gradient(top = 0x30306a, bottom = 0x101018, { size = 256, ...opts } = {}) {
     const [c, ctx] = makeCanvas(size, size);
     const a = new THREE.Color(top), b = new THREE.Color(bottom);
     for (let y = 0; y < size; y++) {
@@ -233,7 +248,7 @@ export const tex = {
   // -- Patterned generators (grime baked in by default; dirty: 0 disables) ---
 
   /** Checkerboard with photographic grime. cells = squares per side. */
-  checker(c1 = 0x8a8a9e, c2 = 0x5a5a6e, { size = 64, cells = 8, dirty = 0.22, seed = 17, ...opts } = {}) {
+  checker(c1 = 0x8a8a9e, c2 = 0x5a5a6e, { size = 256, cells = 8, dirty = 0, seed = 17, ...opts } = {}) {
     const [c, ctx] = makeCanvas(size, size);
     const s = size / cells;
     for (let y = 0; y < cells; y++) {
@@ -247,7 +262,7 @@ export const tex = {
   },
 
   /** Grid lines over a background — floors, panels, tiles. */
-  grid(bg = 0x44445a, line = 0x2a2a3a, { size = 64, cells = 8, lineWidth = 1, dirty = 0.2, seed = 18, ...opts } = {}) {
+  grid(bg = 0x44445a, line = 0x2a2a3a, { size = 256, cells = 8, lineWidth = 1, dirty = 0, seed = 18, ...opts } = {}) {
     const [c, ctx] = makeCanvas(size, size);
     ctx.fillStyle = css(bg);
     ctx.fillRect(0, 0, size, size);
@@ -262,7 +277,7 @@ export const tex = {
   },
 
   /** Even stripes of the given colors. horizontal:true for row stripes. */
-  stripes(colors = [0xaa3333, 0xeeeeee], { size = 64, horizontal = false, dirty = 0.18, seed = 19, ...opts } = {}) {
+  stripes(colors = [0xaa3333, 0xeeeeee], { size = 256, horizontal = false, dirty = 0, seed = 19, ...opts } = {}) {
     const [c, ctx] = makeCanvas(size, size);
     const n = colors.length;
     const s = size / n;
@@ -276,7 +291,7 @@ export const tex = {
   },
 
   /** Running-bond bricks — per-brick tint, mortar shadow, baked grime. */
-  bricks(brick = 0x9e5a44, mortar = 0x6e6660, { size = 64, rows = 4, cols = 4, gap = 2, dirty = 0.25, seed = 7, ...opts } = {}) {
+  bricks(brick = 0x9e5a44, mortar = 0x6e6660, { size = 256, rows = 4, cols = 4, gap = 2, dirty = 0, seed = 7, ...opts } = {}) {
     const [c, ctx] = makeCanvas(size, size);
     const rnd = mulberry32(seed);
     ctx.fillStyle = css(mortar);

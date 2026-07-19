@@ -1,14 +1,15 @@
-// Model: psx-arcade — a 90s arcade cabinet, PSX showcase piece.
-// Demonstrates the whole PSX toolkit: box modeling, chamfered edges, tiny
-// pixel-art textures (tex.pixel), unlit screen, vertex-painted shading,
-// low-seg cylinders, and a triangle budget with room to spare.
+// Model: arcade-cabinet — a 90s upright arcade cabinet, the showcase piece.
+// Demonstrates the whole toolkit: box modeling, chamfered edges, pixel-art
+// textures (tex.pixel) for the screen and marquee, unlit and emissive used
+// correctly, vertex-painted shading, low-seg cylinders, and a triangle budget
+// with room to spare.
 import * as THREE from 'three';
 
 export const meta = {
-  name: 'psx-arcade',
+  name: 'arcade-cabinet',
   description: 'Classic upright arcade cabinet with pixel-art screen and marquee',
   units: 'meters',
-  psx: { budget: 800 },
+  budget: 800,
 };
 
 export function build({ THREE, mats, helpers: H, tex }) {
@@ -28,7 +29,7 @@ export function build({ THREE, mats, helpers: H, tex }) {
   const body = H.mesh('Body', H.roundedBox(0.62, 0.87, 0.72, 0.012), mats.plastic(bodyBlue), {
     pos: [0, 0.08 + 0.435, 0],
   });
-  // fake AO: darker toward the floor — the PS1 way to shade a big flat panel
+  // fake AO: darker toward the floor — the cheapest way to shade a big flat panel
   H.vertexPaint(body, ([, y]) => {
     const t = Math.min(Math.max((y + 0.435) / 0.87, 0), 1); // 0 bottom .. 1 top
     const v = Math.round((0.55 + 0.45 * t) * 255);
@@ -50,15 +51,17 @@ export function build({ THREE, mats, helpers: H, tex }) {
 
   root.add(kick, body, tower, marquee);
 
-  // --- Marquee face: back-lit "PSX" pixel sign ------------------------------
+  // --- Marquee face: back-lit "ARCADE" pixel sign ---------------------------
+  // 3x5 letters separated by one background column; tex.pixel is always
+  // nearest-filtered, so the texels stay square at any render size.
   const marqueeTex = tex.pixel([
-    'mmmmmmmmmmmmm',
-    'mYYmmmYYmYmYm',
-    'mYmYmYmmmYmYm',
-    'mYYmmmYmmmYmm',
-    'mYmmmmmYmYmYm',
-    'mYmmmYYmmYmYm',
-    'mmmmmmmmmmmmm',
+    'mmmmmmmmmmmmmmmmmmmmmmmmm',
+    'mYYYmYYYmYYYmYYYmYYmmYYYm',
+    'mYmYmYmYmYmmmYmYmYmYmYmmm',
+    'mYYYmYYYmYmmmYYYmYmYmYYYm',
+    'mYmYmYYmmYmmmYmYmYmYmYmmm',
+    'mYmYmYmYmYYYmYmYmYYmmYYYm',
+    'mmmmmmmmmmmmmmmmmmmmmmmmm',
   ], { m: 0x3a1050, Y: 0xffd23c });
   // Thin sign panel: keep it nearly flush with the marquee front — a thick
   // proud box would show the texture squished on its edge faces from the side.

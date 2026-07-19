@@ -57,12 +57,9 @@ export function printReport(report, { treeMaxLines = 60 } = {}) {
   const b = report.bounds;
   console.log(`  Size:      ${fmtM(b.size[0])} W x ${fmtM(b.size[1])} H x ${fmtM(b.size[2])} D  (units: ${report.meta.units || 'meters'})`);
   console.log(`  Geometry:  ${s.triangles.toLocaleString()} triangles, ${s.vertices.toLocaleString()} vertices, ${s.meshes} meshes, ${s.objects} objects`);
-  if (report.psx) {
-    const p = report.psx;
-    const pipe = p.pipeline
-      ? `  |  pipeline: ${p.pipeline.resolution.join('x')} RGB555${p.pipeline.dither ? '+dither' : ''}${p.pipeline.snap ? ' +vertex-snap' : ''}${p.pipeline.affine ? ' +affine-tex' : ''}`
-      : '  |  pipeline: OFF (--hd render)';
-    console.log(`  PSX:       budget ${s.triangles.toLocaleString()}/${p.budget.toLocaleString()} tris (${p.pctOfBudget}%) ${p.withinBudget ? 'ok' : '** OVER BUDGET **'}${pipe}`);
+  if (report.budget) {
+    const p = report.budget;
+    console.log(`  Budget:    ${s.triangles.toLocaleString()}/${p.budget.toLocaleString()} tris (${p.pctOfBudget}%) ${p.withinBudget ? 'ok' : '** OVER BUDGET **'}`);
   }
   console.log(`  Materials: ${report.materials.map((m) => m.name || m.type).join(', ') || 'none'}`);
 
@@ -108,7 +105,6 @@ export function printReport(report, { treeMaxLines = 60 } = {}) {
 
 export async function renderModel(root, modelName, opts = {}) {
   const {
-    // 960x720 = exact 3x integer upscale of the 320x240 PSX framebuffer
     width = 960,
     height = 720,
     views = DEFAULT_VIEWS,
@@ -119,8 +115,6 @@ export async function renderModel(root, modelName, opts = {}) {
     out = null,
     json = false,
     verbose = false,
-    hd = false,
-    psxRes = null,
   } = opts;
 
   const allViews = [...views];
@@ -129,7 +123,7 @@ export async function renderModel(root, modelName, opts = {}) {
   const result = await runInPage(root, (page) =>
     page.evaluate(
       (o) => window.__capture(o),
-      { model: modelName, width, height, views: allViews, focus, isolate, sheet, hd, psxRes }
+      { model: modelName, width, height, views: allViews, focus, isolate, sheet }
     ),
     { width, height, verbose }
   );

@@ -91,7 +91,7 @@ export function analyzeContacts(root, { toleranceFactor = 0.006 } = {}) {
       if (!m) continue;
       if (m.emissiveIntensity > 0.5 && m.emissive && m.emissive.getHex() !== 0) return false;
       if (m.transmission > 0.5) return false;
-      // PSX glass: plain alpha-blended transparency instead of transmission
+      // Glass here is plain alpha-blended transparency, not transmission
       if (m.transparent && m.opacity < 0.7) return false;
     }
     return true;
