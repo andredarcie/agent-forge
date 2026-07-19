@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { Brush, Evaluator, SUBTRACTION, ADDITION, INTERSECTION } from 'three-bvh-csg';
+import { cleanBooleanResult, validateGeometry } from './meshclean.js';
 
 /** Named group with optional children. */
 export function group(name, ...children) {
@@ -334,9 +335,21 @@ function _csg(base, others, op) {
   // evaluate() expresses the result in the FIRST brush's local frame — bake
   // the base's transform into the output geometry so world placement holds
   // even when the base mesh itself is positioned/rotated.
-  const geometry = result.geometry;
+  let geometry = result.geometry;
   base.updateMatrixWorld(true);
   geometry.applyMatrix4(base.matrixWorld);
+
+  // The evaluator emits a triangle soup with T-junctions where a cut crosses an
+  // existing face, so ~45% of the raw result's edges belong to a single
+  // triangle. Weld, split those edges, drop the slivers the split produces and
+  // rebuild normals, so what leaves here is a closed surface.
+  geometry = cleanBooleanResult(geometry);
+  const check = validateGeometry(geometry, { label: base.name || 'csg' });
+  if (!check.ok) {
+    throw new Error(
+      `CSG result for "${base.name || '(unnamed)'}" is invalid:\n  ` + check.errors.join('\n  ')
+    );
+  }
   geometry.name = base.name; // carry the name onto exported glTF meshes
   const out = new THREE.Mesh(geometry, base.material);
   out.name = base.name;

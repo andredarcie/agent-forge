@@ -23,7 +23,10 @@ export const meta = {
   name: 'dresser',
   description: 'Wooden dresser with 3 drawers that open and close (groups sliding on the +Z axis)',
   units: 'meters',
-  budget: 600,
+  // 650 after the CSG repair pass: the one-piece drawer trays and the runner
+  // frames are booleans, and closing their T-junctions splits edges, which
+  // costs triangles. Was 587 when the boolean output was still an open soup.
+  budget: 700,
 };
 
 export function build({ THREE, mats, helpers: H, tex }) {

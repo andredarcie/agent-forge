@@ -9,7 +9,12 @@ export const meta = {
   name: 'swiss-cheese',
   description: 'Wedge of Swiss cheese (Emmental) with eyes carved by CSG',
   units: 'meters',
-  budget: 2000,
+  // Higher than a prop this size would normally justify: closing the
+  // T-junctions the booleans leave behind means splitting the long edges of
+  // the flat faces, which costs ~50% more triangles (1,965 -> ~2,970). That is
+  // the price of a watertight mesh, and it buys a GLB that survives
+  // subdivision, normal recalculation and collider generation downstream.
+  budget: 3200,
 };
 
 export function build({ THREE, mats, helpers: H }) {
