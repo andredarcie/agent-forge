@@ -28,6 +28,53 @@ controls.dampingFactor = 0.08;
 let currentRoot = null;
 let currentModel = null;
 let wireframe = false;
+const structureNames = new Map();
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let pointerPosition = null;
+let hoveredName = null;
+let hoverDirty = false;
+
+function clearHover() {
+  hoveredName?.classList.remove('hovered');
+  hoveredName = null;
+}
+
+function updateHover() {
+  if (!hoverDirty) return;
+  hoverDirty = false;
+  if (!pointerPosition || !currentRoot) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.set(
+    ((pointerPosition.x - rect.left) / rect.width) * 2 - 1,
+    -((pointerPosition.y - rect.top) / rect.height) * 2 + 1,
+  );
+  raycaster.setFromCamera(pointer, camera);
+  const meshes = [];
+  currentRoot.traverseVisible((o) => { if (o.isMesh) meshes.push(o); });
+  const hit = raycaster.intersectObjects(meshes, false).find(({ object, face }) => {
+    const material = Array.isArray(object.material) ? object.material[face.materialIndex] : object.material;
+    return material?.visible;
+  });
+  const name = hit ? structureNames.get(hit.object) : null;
+  if (name === hoveredName) return;
+  clearHover();
+  hoveredName = name;
+  hoveredName?.classList.add('hovered');
+}
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  pointerPosition = { x: e.clientX, y: e.clientY };
+  hoverDirty = true;
+});
+function leaveCanvas() {
+  pointerPosition = null;
+  clearHover();
+}
+renderer.domElement.addEventListener('pointerleave', leaveCanvas);
+renderer.domElement.addEventListener('pointercancel', leaveCanvas);
+addEventListener('blur', leaveCanvas);
+controls.addEventListener('change', () => { hoverDirty = true; });
 
 function setStatus(text, color) {
   statusEl.textContent = text;
@@ -53,7 +100,25 @@ function updatePanel(report) {
   document.getElementById('sec-issues').innerHTML = report.issues.length
     ? report.issues.map((i) => `<div class="issue ${i.level}">[${i.level}] ${escapeHtml(i.message)}</div>`).join('')
     : '<div class="issue ok">none detected ✓</div>';
-  document.getElementById('tree').textContent = report.treeText;
+  const tree = document.getElementById('tree');
+  tree.replaceChildren();
+  clearHover();
+  structureNames.clear();
+  const lines = report.treeText.split('\n');
+  let lineIndex = 0;
+  function appendNode(object, depth = 0) {
+    const line = lines[lineIndex++];
+    const nameOffset = depth * 4;
+    const name = document.createElement('span');
+    name.className = 'structure-name';
+    name.textContent = object.name || '(unnamed)';
+    tree.append(document.createTextNode(line.slice(0, nameOffset)), name,
+      document.createTextNode(line.slice(nameOffset + name.textContent.length) + '\n'));
+    structureNames.set(object, name);
+    object.children.forEach((child) => appendNode(child, depth + 1));
+  }
+  appendNode(currentRoot);
+  hoverDirty = true;
 }
 
 function escapeHtml(s) {
@@ -213,5 +278,6 @@ events.onopen = () => { if (!currentModel) setStatus('ready'); };
 
 renderer.setAnimationLoop(() => {
   controls.update();
+  updateHover();
   renderFrame();
 });
