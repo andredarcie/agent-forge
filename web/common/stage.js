@@ -61,11 +61,14 @@ export function createStage(renderer, { background = STUDIO_BACKGROUND } = {}) {
   );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
+  // Wireframe overrides apply to model meshes, not the stage helpers.
+  floor.material.allowOverride = false;
   scene.add(floor);
 
   const grid = new THREE.GridHelper(2, 20, 0xb7bec8, 0xd2d8df);
   grid.material.transparent = true;
   grid.material.opacity = 0.6;
+  grid.material.allowOverride = false;
   scene.add(grid);
 
   const wireMat = new THREE.MeshBasicMaterial({ color: 0x25303c, wireframe: true });
